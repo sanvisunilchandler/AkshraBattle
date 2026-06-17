@@ -1,7 +1,8 @@
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 import uuid
-import os
+import random
+
 
 app = Flask(__name__, static_folder="static")
 CORS(app)
@@ -761,14 +762,16 @@ def create_session():
     mode = data.get("mode", "match")
 
     session_id = str(uuid.uuid4())[:6].upper()
+
     SESSIONS[session_id] = {
         "mode": mode,
         "players": {},
-        "questions": QUESTIONS,
+        "questions": random.sample(QUESTIONS, len(QUESTIONS)),  # SHUFFLED
         "status": "waiting",
         "timeLimit": 30 if mode == "rush" else 60,
         "bossHealth": 200 if mode == "boss" else None
     }
+
     return jsonify({"sessionId": session_id})
 
 
