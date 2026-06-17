@@ -887,8 +887,10 @@ def get_state(session_id):
         "players": players,
         "status": session["status"],
         "timeLimit": session["timeLimit"],
-        "bossHealth": session.get("bossHealth")
+        "bossHealth": session.get("bossHealth"),
+        "questions": session["questions"]   # ADD THIS
     })
+
 
 
 # -----------------------------

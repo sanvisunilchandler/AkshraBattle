@@ -342,11 +342,7 @@
       const [coins, setCoins] = React.useState(0);
       const [abilityAnimation, setAbilityAnimation] = React.useState(false);
 
-      React.useEffect(() => {
-        fetch(API + "/questions")
-          .then(res => res.json())
-          .then(setQuestions);
-      }, []);
+
 
       React.useEffect(() => {
         const interval = setInterval(() => {
@@ -357,6 +353,7 @@
               if (data.mode) setMode(data.mode);
               if (data.timeLimit) setTimeLeft(t => Math.min(t, data.timeLimit));
               if (data.bossHealth !== undefined) setBossHealth(data.bossHealth);
+              if (data.questions) setQuestions(data.questions);
             });
         }, 1500);
         return () => clearInterval(interval);
