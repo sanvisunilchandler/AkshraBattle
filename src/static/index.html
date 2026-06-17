@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Akshara Battle – Kannadalogy</title>
+    <style>
+        body {
+          font-family: system-ui, sans-serif;
+          text-align: center;
+          background: #f5f5ff;
+          margin: 0;
+          padding: 0;
+        }
+        .container {
+          max-width: 900px;
+          margin: 0 auto;
+          padding: 24px;
+        }
+        h1 {
+          margin-top: 20px;
+          color: #333;
+        }
+        button {
+          padding: 10px 20px;
+          margin: 6px;
+          font-size: 16px;
+          cursor: pointer;
+          border-radius: 6px;
+          border: 1px solid #444;
+          background: white;
+        }
+        button.primary {
+          background: #4f46e5;
+          color: white;
+          border-color: #4f46e5;
+        }
+        input, select {
+          padding: 8px;
+          margin: 6px;
+          font-size: 16px;
+          border-radius: 4px;
+          border: 1px solid #aaa;
+        }
+        .avatar-grid {
+          display: flex;
+          justify-content: center;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin: 10px 0;
+        }
+        .avatar-card {
+          border: 2px solid transparent;
+          padding: 8px 14px;
+          border-radius: 10px;
+          cursor: pointer;
+          background: white;
+          width: 120px;
+        }
+        .avatar-card.selected {
+          border-color: #4f46e5;
+          box-shadow: 0 0 0 2px rgba(79,70,229,0.2);
+        }
+        .screen {
+          margin-top: 20px;
+          padding: 16px;
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+          position: relative;
+        }
+        .options {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-top: 10px;
+        }
+        .leaderboard {
+          margin-top: 20px;
+          text-align: left;
+        }
+        .leaderboard ol {
+          padding-left: 20px;
+        }
+        .timer {
+          font-weight: bold;
+          margin-bottom: 8px;
+        }
+        @keyframes slideIn {
+          0% { transform: translateY(20px); opacity: 0; }
+          100% { transform: translateY(0); opacity: 1; }
+        }
+        .player-join {
+          animation: slideIn 0.4s ease-out;
+        }
+        .ability-btn {
+          background: #ffbf00;
+          border: none;
+          padding: 8px 16px;
+          font-size: 14px;
+          border-radius: 8px;
+          cursor: pointer;
+          margin-bottom: 10px;
+          animation: glow 1.5s infinite alternate;
+        }
+        @keyframes glow {
+          from { box-shadow: 0 0 5px #ffbf00; }
+          to { box-shadow: 0 0 15px #ffdf40; }
+        }
+        @keyframes burst {
+          0% { transform: scale(0.5); opacity: 0; }
+          50% { transform: scale(1.3); opacity: 1; }
+          100% { transform: scale(1); opacity: 0; }
+        }
+        .ability-effect {
+          position: absolute;
+          top: 15%;
+          left: 50%;
+          transform: translateX(-50%);
+          font-size: 32px;
+          animation: burst 1.2s ease-out;
+          pointer-events: none;
+        }
+        .boss-bar {
+          margin-top: 8px;
+          font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- React + Babel CDN -->
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+<script type="text/babel">
+    const API = "http://localhost:5000/api";
+
+    const AVATARS = [
+      { id: "parrot", name: "Akshu the Parrot", emoji: "🦜" },
+      { id: "tiger", name: "Nava the Tiger", emoji: "🐯" },
+      { id: "elephant", name: "Gaja the Elephant", emoji: "🐘" },
+      { id: "peacock", name: "Mayura the Peacock", emoji: "🦚" },
+      { id: "monkey", name: "Manku the Monkey", emoji: "🐒" },
+      { id: "lion", name: "Simha the Lion", emoji: "🦁" },
+      { id: "cow", name: "Kamala the Cow", emoji: "🐄" },
+      { id: "frog", name: "Kappe the Frog", emoji: "🐸" },
+      { id: "snake", name: "Sarpa the Snake", emoji: "🐍" },
+      { id: "rabbit", name: "Mola the Rabbit", emoji: "🐰" },
+      { id: "bear", name: "Karadi the Bear", emoji: "🐻" },
+      { id: "goat", name: "Meka the Goat", emoji: "🐐" },
+      { id: "owl", name: "Gubbi the Owl", emoji: "🦉" },
+      { id: "dog", name: "Nayi the Dog", emoji: "🐶" },
+      { id: "cat", name: "Bekku the Cat", emoji: "🐱" },
+      { id: "fish", name: "Meenu the Fish", emoji: "🐟" },
+      { id: "horse", name: "Kudure the Horse", emoji: "🐴" },
+      { id: "panda", name: "Pandu the Panda", emoji: "🐼" },
+      { id: "koala", name: "Kola the Koala", emoji: "🐨" },
+      { id: "fox", name: "Nari the Fox", emoji: "🦊" }
+    ];
+
+    function App() {
+      const [screen, setScreen] = React.useState("menu"); // menu, host, game
+      const [sessionId, setSessionId] = React.useState("");
+      const [playerId, setPlayerId] = React.useState("");
+      const [name, setName] = React.useState("");
+      const [avatar, setAvatar] = React.useState("parrot");
+      const [hostMode, setHostMode] = React.useState("match"); // match, word, rush, boss, mystery
+
+      const handleHost = async () => {
+        const res = await fetch(API + "/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: hostMode })
+        });
+        const data = await res.json();
+        setSessionId(data.sessionId);
+        setScreen("host");
+      };
+
+      const handleJoin = async () => {
+        if (!sessionId || !name) return;
+        const res = await fetch(API + "/session/" + sessionId + "/join", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, avatar })
+        });
+        const data = await res.json();
+        if (data.error) {
+          alert(data.error);
+          return;
+        }
+        setPlayerId(data.playerId);
+        setScreen("game");
+      };
+
+      if (screen === "host") {
+        return (
+          <div className="container">
+            <h1>Akshara Battle – Host</h1>
+            <HostScreen sessionId={sessionId} />
+            <button onClick={() => setScreen("menu")}>Back to Menu</button>
+          </div>
+        );
+      }
+
+      if (screen === "game") {
+        return (
+          <div className="container">
+            <h1>Akshara Battle</h1>
+            <GameScreen
+              sessionId={sessionId}
+              playerId={playerId}
+              name={name}
+              avatar={avatar}
+            />
+          </div>
+        );
+      }
+
+      return (
+        <div className="container">
+          <h1>Akshara Battle – Kannadalogy</h1>
+          <div className="screen">
+            <h2>Host Game</h2>
+            <div>
+              <h3>Choose Mode</h3>
+              <select
+                value={hostMode}
+                onChange={e => setHostMode(e.target.value)}
+              >
+                <option value="match">Akshara Match (Classic)</option>
+                <option value="word">Word Builder</option>
+                <option value="rush">Akshara Rush (Time Attack)</option>
+                <option value="boss">Boss Battle</option>
+                <option value="mystery">Mystery Box</option>
+              </select>
+            </div>
+            <button className="primary" onClick={handleHost}>
+              Host New Game
+            </button>
+
+            <hr style={{ margin: "20px 0" }} />
+
+            <h2>Join Game</h2>
+            <input
+              placeholder="Enter Session ID"
+              value={sessionId}
+              onChange={e => setSessionId(e.target.value.toUpperCase())}
+            />
+            <br />
+            <input
+              placeholder="Enter Your Name"
+              value={name}
+              onChange={e => setName(e.target.value)}
+            />
+            <p>Choose your avatar:</p>
+            <div className="avatar-grid">
+              {AVATARS.map(a => (
+                <div
+                  key={a.id}
+                  className={
+                    "avatar-card" + (avatar === a.id ? " selected" : "")
+                  }
+                  onClick={() => setAvatar(a.id)}
+                >
+                  <div style={{ fontSize: 28 }}>{a.emoji}</div>
+                  <div style={{ fontSize: 14 }}>{a.name}</div>
+                </div>
+              ))}
+            </div>
+            <button
+              className="primary"
+              onClick={handleJoin}
+              disabled={!name || !sessionId}
+            >
+              Join Game
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function HostScreen({ sessionId }) {
+      const [players, setPlayers] = React.useState([]);
+      const [mode, setMode] = React.useState("match");
+
+      React.useEffect(() => {
+        const interval = setInterval(() => {
+          fetch(API + "/session/" + sessionId + "/state")
+            .then(res => res.json())
+            .then(data => {
+              if (data.players) setPlayers(data.players);
+              if (data.mode) setMode(data.mode);
+            });
+        }, 1500);
+        return () => clearInterval(interval);
+      }, [sessionId]);
+
+      const avatarEmoji = (id) => {
+        const a = AVATARS.find(x => x.id === id);
+        return a ? a.emoji : "🙂";
+      };
+
+      const modeLabel = {
+        match: "Akshara Match",
+        word: "Word Builder",
+        rush: "Akshara Rush",
+        boss: "Boss Battle",
+        mystery: "Mystery Box"
+      }[mode] || mode;
+
+      return (
+        <div className="screen">
+          <h2>Session ID</h2>
+          <h1>{sessionId}</h1>
+          <p>Mode: <strong>{modeLabel}</strong></p>
+          <p>Ask students to enter this code.</p>
+          <h3>Players joined:</h3>
+          <ul style={{ listStyle: "none", padding: 0 }}>
+            {players.map(p => (
+              <li key={p.id} className="player-join">
+                {avatarEmoji(p.avatar)} {p.name} – {p.score}
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
+    }
+
+    function GameScreen({ sessionId, playerId, name, avatar }) {
+      const [questions, setQuestions] = React.useState([]);
+      const [index, setIndex] = React.useState(0);
+      const [score, setScore] = React.useState(0);
+      const [streak, setStreak] = React.useState(0);
+      const [useDouble, setUseDouble] = React.useState(false);
+      const [leaderboard, setLeaderboard] = React.useState([]);
+      const [timeLeft, setTimeLeft] = React.useState(60);
+      const [mode, setMode] = React.useState("match");
+      const [bossHealth, setBossHealth] = React.useState(null);
+      const [coins, setCoins] = React.useState(0);
+      const [abilityAnimation, setAbilityAnimation] = React.useState(false);
+
+      React.useEffect(() => {
+        fetch(API + "/questions")
+          .then(res => res.json())
+          .then(setQuestions);
+      }, []);
+
+      React.useEffect(() => {
+        const interval = setInterval(() => {
+          fetch(API + "/session/" + sessionId + "/state")
+            .then(res => res.json())
+            .then(data => {
+              if (data.players) setLeaderboard(data.players);
+              if (data.mode) setMode(data.mode);
+              if (data.timeLimit) setTimeLeft(t => Math.min(t, data.timeLimit));
+              if (data.bossHealth !== undefined) setBossHealth(data.bossHealth);
+            });
+        }, 1500);
+        return () => clearInterval(interval);
+      }, [sessionId]);
+
+      React.useEffect(() => {
+        const t = setInterval(() => {
+          setTimeLeft(t => Math.max(0, t - 1));
+        }, 1000);
+        return () => clearInterval(t);
+      }, []);
+
+      const avatarEmoji = (id) => {
+        const a = AVATARS.find(x => x.id === id);
+        return a ? a.emoji : "🙂";
+      };
+
+      const answer = async (i) => {
+        if (!questions.length || timeLeft === 0) return;
+        const q = questions[index];
+        const res = await fetch(API + "/session/" + sessionId + "/answer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            playerId,
+            questionId: q.id,
+            answerIndex: i,
+            useDouble
+          })
+        });
+        const data = await res.json();
+        if (data.error) {
+          alert(data.error);
+          return;
+        }
+        setScore(data.score);
+        setStreak(data.streak);
+        setCoins(data.coins !== undefined ? data.coins : coins);
+        if (data.bossHealth !== undefined) setBossHealth(data.bossHealth);
+        setUseDouble(false);
+        setIndex((index + 1) % questions.length);
+      };
+
+      const useAbility = () => {
+        // purely visual for now
+        setAbilityAnimation(true);
+        setTimeout(() => setAbilityAnimation(false), 1200);
+      };
+
+      if (!questions.length) {
+        return <div className="screen"><h2>Loading questions…</h2></div>;
+      }
+
+      const q = questions[index];
+
+      if (timeLeft === 0) {
+        return (
+          <div className="screen">
+            <h2>Time's up!</h2>
+            <h3>Your score: {score}</h3>
+            {mode === "mystery" && <h3>Your coins: {coins}</h3>}
+            <Leaderboard leaderboard={leaderboard} />
+          </div>
+        );
+      }
+
+      const modeLabel = {
+        match: "Akshara Match",
+        word: "Word Builder",
+        rush: "Akshara Rush",
+        boss: "Boss Battle",
+        mystery: "Mystery Box"
+      }[mode] || mode;
+
+      return (
+        <div className="screen">
+          {abilityAnimation && (
+            <div className="ability-effect">
+              {avatarEmoji(avatar)} Power!
+            </div>
+          )}
+          <div className="timer">
+            {mode === "rush" ? "⏱ Akshara Rush – " : "⏱ Time left: "}
+            {timeLeft}s
+          </div>
+          <h3>Mode: {modeLabel}</h3>
+          {mode === "boss" && bossHealth !== null && (
+            <div className="boss-bar">👹 Boss Health: {bossHealth}</div>
+          )}
+          {mode === "mystery" && (
+            <h3>🎁 Coins: {coins}</h3>
+          )}
+          <h2>{avatarEmoji(avatar)} {name}</h2>
+          <h3>Score: {score} | Streak: {streak}</h3>
+          <div>
+            <label>
+              <input
+                type="checkbox"
+                checked={useDouble}
+                onChange={() => setUseDouble(!useDouble)}
+              />
+              Use Double Points (x2)
+            </label>
+          </div>
+          <button className="ability-btn" onClick={useAbility}>
+            Avatar Ability (visual)
+          </button>
+          <h3 style={{ marginTop: 16 }}>{q.question}</h3>
+          <div className="options">
+            {q.options.map((opt, i) => (
+              <button key={i} onClick={() => answer(i)}>
+                {opt}
+              </button>
+            ))}
+          </div>
+          <Leaderboard leaderboard={leaderboard} />
+        </div>
+      );
+    }
+
+    function Leaderboard({ leaderboard }) {
+      const avatarEmoji = (id) => {
+        const a = AVATARS.find(x => x.id === id);
+        return a ? a.emoji : "🙂";
+      };
+      return (
+        <div className="leaderboard">
+          <h3>Leaderboard</h3>
+          <ol>
+            {leaderboard.map(p => (
+              <li key={p.id}>
+                {avatarEmoji(p.avatar)} {p.name} – {p.score} (🔥 {p.streak}) {p.coins ? ` | 🎁 ${p.coins}` : ""}
+              </li>
+            ))}
+          </ol>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
